@@ -1,0 +1,61 @@
+.musician-card {
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.musician-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.musician-image {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.musician-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.musician-card:hover .musician-image img {
+  transform: scale(1.05);
+}
+
+.musician-info {
+  padding: 1.5rem;
+}
+
+.musician-name {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #646cff;
+}
+
+.musician-id {
+  margin: 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+@media (prefers-color-scheme: light) {
+  .musician-card {
+    background-color: #f9f9f9;
+  }
+
+  .musician-name {
+    color: #213547;
+  }
+
+  .musician-id {
+    color: #666;
+  }
+}
