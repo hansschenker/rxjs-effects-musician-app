@@ -13,10 +13,20 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, onQueryChange }) => {
     setLocalQuery(query);
   }, [query]);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      if (localQuery !== query) {
+        onQueryChange(localQuery);
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [localQuery, onQueryChange, query]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setLocalQuery(newValue);
-    onQueryChange(newValue);
+    setLocalQuery(e.target.value);
   };
 
   return (
@@ -27,6 +37,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, onQueryChange }) => {
         value={localQuery}
         onChange={handleChange}
         className="search-input"
+        aria-label="Search musicians"
       />
       <div className="search-icon">🔍</div>
     </div>

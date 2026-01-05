@@ -7,7 +7,7 @@
  */
 
 import { BehaviorSubject, Observable, of } from "rxjs";
-import { delay, exhaustMap, map, catchError } from "rxjs/operators";
+import { delay, exhaustMap, map, distinctUntilChanged } from "rxjs/operators";
 
 // Import our framework-agnostic Effects system
 import { createAction, ofType } from "./core/actions";
@@ -108,12 +108,14 @@ interface MusiciansState {
   musicians: Musician[];
   isLoading: boolean;
   query: string;
+  error: string | null;
 }
 
 const initialState: MusiciansState = {
   musicians: [],
   isLoading: false,
   query: "",
+  error: null,
 };
 
 // State as BehaviorSubject (replaces NgRx Store)
@@ -132,6 +134,7 @@ function updateState(updater: (state: MusiciansState) => MusiciansState): void {
 export const selectMusicians = () => state$.value.musicians;
 export const selectIsLoading = () => state$.value.isLoading;
 export const selectQuery = () => state$.value.query;
+export const selectError = () => state$.value.error;
 export const selectFilteredMusicians = () => {
   const musicians = selectMusicians();
   const query = selectQuery().toLowerCase();
@@ -153,11 +156,10 @@ export const musiciansState$ = state$.asObservable();
  */
 
 export function handlePageOpened(): void {
-  updateState((state) => ({ ...state, isLoading: true }));
+  updateState((state) => ({ ...state, isLoading: true, error: null }));
 }
 
 export function handleQueryChanged(query: string): void {
-  console.log("Updating query state to:", query);
   updateState((state) => ({ ...state, query }));
 }
 
@@ -166,19 +168,22 @@ export function handleMusiciansLoadedSuccess(musicians: Musician[]): void {
     ...state,
     musicians,
     isLoading: false,
+    error: null,
   }));
 }
 
-export function handleMusiciansLoadedFailure(): void {
-  updateState((state) => ({ ...state, isLoading: false }));
+export function handleMusiciansLoadedFailure(message: string): void {
+  updateState((state) => ({ ...state, isLoading: false, error: message }));
 }
 
 // ============================================================================
 // 7. EFFECTS SYSTEM SETUP
 // ============================================================================
 
+const isDebugMode = import.meta.env?.DEV ?? false;
+
 const { actions$, dispatcher, runner } = createEffectsSystem({
-  debug: true,
+  debug: isDebugMode,
   errorHandler: (error, effectId) => {
     console.error(`❌ Error in ${effectId}:`, error);
   },
@@ -277,8 +282,8 @@ export const updateFailureStateEffect = createEffect(
   () =>
     actions$.pipe(
       ofType(musiciansLoadedFailure),
-      map(() => {
-        handleMusiciansLoadedFailure();
+      map((action) => {
+        handleMusiciansLoadedFailure(action.payload.message);
         return null;
       })
     ),
@@ -295,10 +300,6 @@ export const updateQueryStateEffect = createEffect(
     actions$.pipe(
       ofType(musiciansQueryChanged),
       map((action) => {
-        console.log(
-          "Effect received queryChanged action:",
-          action.payload.query
-        );
         handleQueryChanged(action.payload.query);
         return null;
       })
@@ -321,7 +322,9 @@ export const loggingEffect = createEffect(
         musiciansLoadedFailure
       ),
       map((action) => {
-        console.log("📊 Action:", action.type, action);
+        if (isDebugMode) {
+          console.log("📊 Action:", action.type, action);
+        }
         return null;
       })
     ),
@@ -360,7 +363,6 @@ export function initializeEffects(): void {
 export const dispatch = {
   pageOpened: () => dispatcher.next(musiciansPageOpened()),
   queryChanged: (query: string) => {
-    console.log("Dispatching queryChanged action with:", query);
     dispatcher.next(musiciansQueryChanged({ query }));
   },
 };
@@ -376,19 +378,32 @@ export const subscribe = {
     state$.subscribe((state) => callback(state.musicians)),
 
   toFilteredMusicians: (callback: (musicians: Musician[]) => void) =>
-    state$.subscribe((state) => {
-      const query = state.query.toLowerCase();
-      const filtered = state.musicians.filter((m) =>
-        m.name.toLowerCase().includes(query)
-      );
-      callback(filtered);
-    }),
+    state$
+      .pipe(
+        map((state) => {
+          const query = state.query.toLowerCase();
+          return state.musicians.filter((m) =>
+            m.name.toLowerCase().includes(query)
+          );
+        }),
+        distinctUntilChanged((prev, next) => {
+          if (prev.length !== next.length) {
+            return false;
+          }
+
+          return prev.every((musician, index) => musician.id === next[index].id);
+        })
+      )
+      .subscribe(callback),
 
   toIsLoading: (callback: (isLoading: boolean) => void) =>
     state$.subscribe((state) => callback(state.isLoading)),
 
   toQuery: (callback: (query: string) => void) =>
     state$.subscribe((state) => callback(state.query)),
+
+  toError: (callback: (error: string | null) => void) =>
+    state$.subscribe((state) => callback(state.error)),
 };
 
 /**
@@ -408,6 +423,7 @@ export const musiciansApp = {
   selectMusicians,
   selectIsLoading,
   selectQuery,
+  selectError,
   selectFilteredMusicians,
 
   // Actions
