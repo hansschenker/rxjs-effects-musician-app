@@ -1,5 +1,17 @@
+<<<<<<< HEAD
 import { BehaviorSubject, combineLatest, debounceTime, distinctUntilChanged, fromEvent, map } from "rxjs";
 import { musiciansApp, Musician, musiciansLoadedFailure } from "./musicians-app";
+=======
+import {
+  BehaviorSubject,
+  combineLatest,
+  debounceTime,
+  distinctUntilChanged,
+  fromEvent,
+  map,
+} from "rxjs";
+import { musiciansApp, Musician } from "./musicians-app";
+>>>>>>> 2f644932ac9ee934590979b8c44f0e04b826658f
 import "./index.css";
 import "./App.css";
 import "./styles/MusicianCard.css";
@@ -79,6 +91,29 @@ root.append(app);
 
 // State
 const selectedMusicianId$ = new BehaviorSubject<number | null>(null);
+let lastListState:
+  | {
+      ids: number[];
+      selectedId: number | null;
+      isLoading: boolean;
+      error: string | null;
+    }
+  | null = null;
+let lastSelectedMusicianId: number | null = null;
+
+const createFallbackImage = (name: string) => {
+  const safeName = name.trim() || "Unknown Musician";
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" role="img" aria-label="${safeName}">
+      <rect width="100%" height="100%" fill="#1f2937" />
+      <text x="50%" y="50%" fill="#f9fafb" font-size="20" font-family="Arial, sans-serif" text-anchor="middle" dominant-baseline="middle">
+        ${safeName}
+      </text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
 
 // Keep track of rendered list to avoid full rebuilds
 let lastRenderedMusicianIds: number[] = [];
@@ -172,6 +207,7 @@ const renderList = (
     lastRenderedMusicianIds = newIds;
   }
 
+<<<<<<< HEAD
   // 5. Update Selection (always run)
   // Remove old selection
   const previousSelected = listContainer.querySelector(".musicians-list-button.is-selected");
@@ -179,6 +215,11 @@ const renderList = (
     previousSelected.classList.remove("is-selected");
     previousSelected.setAttribute("aria-pressed", "false");
   }
+=======
+    listItem.append(button);
+    list.append(listItem);
+  });
+>>>>>>> 2f644932ac9ee934590979b8c44f0e04b826658f
 
   // Add new selection
   if (selectedMusicianId) {
@@ -220,10 +261,18 @@ const renderSelection = (musician: Musician | null) => {
   const image = document.createElement("img");
   image.src = musician.photoUrl;
   image.alt = musician.name;
+<<<<<<< HEAD
   image.loading = "lazy";
   image.addEventListener("error", () => {
     image.src = `https://via.placeholder.com/300x200?text=${encodeURIComponent(musician.name)}`;
   });
+=======
+  const handleImageError = () => {
+    image.removeEventListener("error", handleImageError);
+    image.src = createFallbackImage(musician.name);
+  };
+  image.addEventListener("error", handleImageError);
+>>>>>>> 2f644932ac9ee934590979b8c44f0e04b826658f
 
   imageWrapper.append(image);
 
@@ -243,6 +292,7 @@ const renderSelection = (musician: Musician | null) => {
   selectionContainer.append(card);
 };
 
+<<<<<<< HEAD
 
 
 // Combine streams for efficient updates
@@ -251,15 +301,46 @@ const subscription = combineLatest([
   selectedMusicianId$
 ]).subscribe(([state, selectedId]) => {
   // Synchronize Input
+=======
+const resolveSelection = (
+  musicians: Musician[],
+  current: number | null
+): number | null => {
+  if (musicians.length === 0) {
+    return null;
+  }
+
+  if (current !== null && musicians.some((musician) => musician.id === current)) {
+    return current;
+  }
+
+  return musicians[0].id;
+};
+
+const stateSubscription = combineLatest([
+  musiciansApp.state$,
+  selectedMusicianId$.pipe(distinctUntilChanged()),
+]).subscribe(([state, selectedId]) => {
+>>>>>>> 2f644932ac9ee934590979b8c44f0e04b826658f
   if (searchInput.value !== state.query) {
     searchInput.value = state.query;
   }
 
+<<<<<<< HEAD
+=======
+  const nextSelectedId = resolveSelection(state.musicians, selectedId);
+  if (nextSelectedId !== selectedId) {
+    selectedMusicianId$.next(nextSelectedId);
+    return;
+  }
+
+>>>>>>> 2f644932ac9ee934590979b8c44f0e04b826658f
   const query = state.query.toLowerCase();
   const filteredMusicians = state.musicians.filter((musician) =>
     musician.name.toLowerCase().includes(query)
   );
 
+<<<<<<< HEAD
   // Auto-selection Logic
   // We need to be careful not to create infinite loops.
   // updateSelection() might emit to selectedMusicianId$.
@@ -290,6 +371,34 @@ const subscription = combineLatest([
 
   const selectedMusician = filteredMusicians.find(m => m.id === effectiveSelectedId);
   renderSelection(selectedMusician ?? null);
+=======
+  const filteredIds = filteredMusicians.map((musician) => musician.id);
+  const shouldRenderList =
+    !lastListState ||
+    lastListState.isLoading !== state.isLoading ||
+    lastListState.error !== state.error ||
+    lastListState.selectedId !== selectedId ||
+    lastListState.ids.length !== filteredIds.length ||
+    lastListState.ids.some((id, index) => id !== filteredIds[index]);
+
+  if (shouldRenderList) {
+    renderList(filteredMusicians, selectedId, state.isLoading, state.error);
+    lastListState = {
+      ids: filteredIds,
+      selectedId,
+      isLoading: state.isLoading,
+      error: state.error,
+    };
+  }
+
+  if (lastSelectedMusicianId !== selectedId) {
+    const selected = state.musicians.find(
+      (musician) => musician.id === selectedId
+    );
+    renderSelection(selected ?? null);
+    lastSelectedMusicianId = selectedId;
+  }
+>>>>>>> 2f644932ac9ee934590979b8c44f0e04b826658f
 });
 
 // Search Input Logic
@@ -305,7 +414,11 @@ fromEvent(searchInput, "input")
 
 // Cleanup
 window.addEventListener("beforeunload", () => {
+<<<<<<< HEAD
   subscription.unsubscribe();
+=======
+  stateSubscription.unsubscribe();
+>>>>>>> 2f644932ac9ee934590979b8c44f0e04b826658f
   musiciansApp.cleanup();
 });
 
