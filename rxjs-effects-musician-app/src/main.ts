@@ -123,6 +123,9 @@ const renderList = (
 
     listItem.append(button);
     list.append(listItem);
+    setTimeout(() => {
+      button.classList.add("visible");
+    }, 3000);
   });
 
   listContainer.append(list);
