@@ -1,14 +1,20 @@
 import React from 'react';
 import { Musician } from '../musicians-app';
-import MusicianCard from './MusicianCard';
 import '../styles/MusiciansList.css';
 
 interface MusiciansListProps {
   musicians: Musician[];
   isLoading: boolean;
+  selectedMusicianId: string | null;
+  onSelectMusician: (musicianId: string) => void;
 }
 
-const MusiciansList: React.FC<MusiciansListProps> = ({ musicians, isLoading }) => {
+const MusiciansList: React.FC<MusiciansListProps> = ({
+  musicians,
+  isLoading,
+  selectedMusicianId,
+  onSelectMusician,
+}) => {
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -28,11 +34,24 @@ const MusiciansList: React.FC<MusiciansListProps> = ({ musicians, isLoading }) =
 
   return (
     <div className="musicians-list">
-      <div className="musicians-grid">
-        {musicians.map((musician) => (
-          <MusicianCard key={musician.id} musician={musician} />
-        ))}
-      </div>
+      <ul className="musicians-list-items">
+        {musicians.map((musician) => {
+          const isSelected = musician.id === selectedMusicianId;
+          return (
+            <li key={musician.id} className="musicians-list-item">
+              <button
+                type="button"
+                className={`musicians-list-button${isSelected ? ' is-selected' : ''}`}
+                onClick={() => onSelectMusician(musician.id)}
+                aria-pressed={isSelected}
+              >
+                <span className="musician-list-name">{musician.name}</span>
+                <span className="musician-list-id">ID: {musician.id}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 };
