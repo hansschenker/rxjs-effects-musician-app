@@ -63,6 +63,15 @@ app.append(page);
 root.append(app);
 
 const selectedMusicianId$ = new BehaviorSubject<number | null>(null);
+let lastListState:
+  | {
+      ids: number[];
+      selectedId: number | null;
+      isLoading: boolean;
+      error: string | null;
+    }
+  | null = null;
+let lastSelectedMusicianId: number | null = null;
 
 const createFallbackImage = (name: string) => {
   const safeName = name.trim() || "Unknown Musician";
@@ -144,9 +153,6 @@ const renderList = (
 
     listItem.append(button);
     list.append(listItem);
-    setTimeout(() => {
-      button.classList.add("visible");
-    }, 3000);
   });
 
   listContainer.append(list);
@@ -230,10 +236,32 @@ const stateSubscription = combineLatest([
     musician.name.toLowerCase().includes(query)
   );
 
-  renderList(filteredMusicians, selectedId, state.isLoading, state.error);
+  const filteredIds = filteredMusicians.map((musician) => musician.id);
+  const shouldRenderList =
+    !lastListState ||
+    lastListState.isLoading !== state.isLoading ||
+    lastListState.error !== state.error ||
+    lastListState.selectedId !== selectedId ||
+    lastListState.ids.length !== filteredIds.length ||
+    lastListState.ids.some((id, index) => id !== filteredIds[index]);
 
-  const selected = state.musicians.find((musician) => musician.id === selectedId);
-  renderSelection(selected ?? null);
+  if (shouldRenderList) {
+    renderList(filteredMusicians, selectedId, state.isLoading, state.error);
+    lastListState = {
+      ids: filteredIds,
+      selectedId,
+      isLoading: state.isLoading,
+      error: state.error,
+    };
+  }
+
+  if (lastSelectedMusicianId !== selectedId) {
+    const selected = state.musicians.find(
+      (musician) => musician.id === selectedId
+    );
+    renderSelection(selected ?? null);
+    lastSelectedMusicianId = selectedId;
+  }
 });
 
 fromEvent(searchInput, "input")
