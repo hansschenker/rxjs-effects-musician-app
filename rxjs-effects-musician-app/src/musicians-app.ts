@@ -425,6 +425,7 @@ export const musiciansApp = {
   selectQuery,
   selectError,
   selectFilteredMusicians,
+  getCurrentState,
 
   // Actions
   dispatch,
