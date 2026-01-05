@@ -1,350 +1,55 @@
 /**
  * Musicians App - Framework-Agnostic RxJS Effects Version
- *
- * Converted from NgRx Effects + Angular to pure RxJS/TypeScript
- *
- * Original: https://github.com/marko-stanimirovic/ngrx-musicians-app
+ * Facade re-exporting functionality from modular files.
  */
 
-import { BehaviorSubject, Observable, of } from "rxjs";
-import { delay, exhaustMap, map, distinctUntilChanged } from "rxjs/operators";
+import { Musician } from "./model/musician";
+import {
+  musiciansPageOpened,
+  musiciansQueryChanged,
+  musiciansLoadedSuccess,
+  musiciansLoadedFailure,
+} from "./store/musicians.actions";
+import {
+  musiciansState$,
+  selectMusicians,
+  selectIsLoading,
+  selectQuery,
+  selectError,
+  selectFilteredMusicians,
+  subscribe,
+  MusiciansState,
+} from "./store/musicians.state";
+import { runner, dispatcher, actions$ } from "./store/musicians.effects";
 
-// Import our framework-agnostic Effects system
-import { createAction, ofType } from "./core/actions";
-import { createEffect } from "./core/effect-creator";
-import { mapResponse } from "./core/operators";
-import { createEffectsSystem } from "./core/effects-runner";
+// Re-export types
+export type { Musician, MusiciansState };
 
-// ============================================================================
-// 1. MODEL
-// ============================================================================
-
-export interface Musician {
-  id: number;
-  name: string;
-  photoUrl: string;
-}
-
-// ============================================================================
-// 2. MOCK DATA (simulates backend API)
-// ============================================================================
-
-const musiciansMock: Musician[] = [
-  {
-    id: 1,
-    name: "Eric Clapton",
-    photoUrl: "/assets/musicians/eric-clapton.jpg",
-  },
-  {
-    id: 2,
-    name: "Stevie Ray Vaughan",
-    photoUrl: "/assets/musicians/srv.jpg",
-  },
-  {
-    id: 3,
-    name: "B.B. King",
-    photoUrl: "/assets/musicians/bb-king.jpg",
-  },
-  {
-    id: 4,
-    name: "Gary Moore",
-    photoUrl: "/assets/musicians/gary-moore.jpg",
-  },
-  {
-    id: 5,
-    name: "Jimi Hendrix",
-    photoUrl: "/assets/musicians/jimi-hendrix.jpg",
-  },
-  {
-    id: 6,
-    name: "Keith Richards",
-    photoUrl: "/assets/musicians/keith-richards.jpg",
-  },
-];
-
-// ============================================================================
-// 3. SERVICE (replaces Angular @Injectable service)
-// ============================================================================
-
-class MusiciansService {
-  /**
-   * Simulates API call with 1 second delay
-   */
-  getAll(): Observable<Musician[]> {
-    return of(musiciansMock).pipe(delay(1000));
-  }
-}
-
-const musiciansService = new MusiciansService();
-
-// ============================================================================
-// 4. ACTIONS
-// ============================================================================
-
-// Page Actions (User Interactions)
-export const musiciansPageOpened = createAction<"musicians/page/opened">(
-  "musicians/page/opened"
-);
-export const musiciansQueryChanged = createAction<
-  "musicians/page/queryChanged",
-  { query: string }
->("musicians/page/queryChanged");
-
-// API Actions (Results from backend)
-export const musiciansLoadedSuccess = createAction<
-  "musicians/api/loadedSuccess",
-  { musicians: Musician[] }
->("musicians/api/loadedSuccess");
-export const musiciansLoadedFailure = createAction<
-  "musicians/api/loadedFailure",
-  { message: string }
->("musicians/api/loadedFailure");
-
-// ============================================================================
-// 5. STATE MANAGEMENT
-// ============================================================================
-
-interface MusiciansState {
-  musicians: Musician[];
-  isLoading: boolean;
-  query: string;
-  error: string | null;
-}
-
-const initialState: MusiciansState = {
-  musicians: [],
-  isLoading: false,
-  query: "",
-  error: null,
+// Re-export Actions
+export {
+  musiciansPageOpened,
+  musiciansQueryChanged,
+  musiciansLoadedSuccess,
+  musiciansLoadedFailure,
 };
 
-// State as BehaviorSubject (replaces NgRx Store)
-const state$ = new BehaviorSubject<MusiciansState>(initialState);
-
-/**
- * Update state immutably
- */
-function updateState(updater: (state: MusiciansState) => MusiciansState): void {
-  state$.next(updater(state$.value));
-}
-
-/**
- * Selectors - query current state
- */
-export const selectMusicians = () => state$.value.musicians;
-export const selectIsLoading = () => state$.value.isLoading;
-export const selectQuery = () => state$.value.query;
-export const selectError = () => state$.value.error;
-export const selectFilteredMusicians = () => {
-  const musicians = selectMusicians();
-  const query = selectQuery().toLowerCase();
-  return musicians.filter((musician) =>
-    musician.name.toLowerCase().includes(query)
-  );
+// Re-export State & Selectors
+export {
+  musiciansState$,
+  selectMusicians,
+  selectIsLoading,
+  selectQuery,
+  selectError,
+  selectFilteredMusicians,
+  subscribe,
 };
 
-// Expose state as observable for reactive subscriptions
-export const musiciansState$ = state$.asObservable();
+// Re-export Runner items
+export { runner, actions$, dispatcher };
 
 // ============================================================================
-// 6. REDUCER LOGIC (handled via updateState + action listeners)
+// PUBLIC API FACADE
 // ============================================================================
-
-/**
- * Instead of a traditional reducer, we handle state updates in effects
- * or via explicit state updaters called by the UI
- */
-
-export function handlePageOpened(): void {
-  updateState((state) => ({ ...state, isLoading: true, error: null }));
-}
-
-export function handleQueryChanged(query: string): void {
-  updateState((state) => ({ ...state, query }));
-}
-
-export function handleMusiciansLoadedSuccess(musicians: Musician[]): void {
-  updateState((state) => ({
-    ...state,
-    musicians,
-    isLoading: false,
-    error: null,
-  }));
-}
-
-export function handleMusiciansLoadedFailure(message: string): void {
-  updateState((state) => ({ ...state, isLoading: false, error: message }));
-}
-
-// ============================================================================
-// 7. EFFECTS SYSTEM SETUP
-// ============================================================================
-
-const isDebugMode = import.meta.env?.DEV ?? false;
-
-const { actions$, dispatcher, runner } = createEffectsSystem({
-  debug: isDebugMode,
-  errorHandler: (error, effectId) => {
-    console.error(`❌ Error in ${effectId}:`, error);
-  },
-});
-
-// ============================================================================
-// 8. EFFECTS
-// ============================================================================
-
-/**
- * Effect: Load All Musicians
- *
- * Listens for: musiciansPageOpened
- * Triggers: API call to load musicians
- * Dispatches: musiciansLoadedSuccess | musiciansLoadedFailure
- *
- * Original NgRx Effect:
- * ```typescript
- * export const loadAllMusicians = createEffect(
- *   (actions$ = inject(Actions), musiciansService = inject(MusiciansService)) => {
- *     return actions$.pipe(
- *       ofType(musiciansPageActions.opened),
- *       exhaustMap(() => {
- *         return musiciansService.getAll().pipe(
- *           map((musicians) =>
- *             musiciansApiActions.musiciansLoadedSuccess({ musicians })
- *           ),
- *           catchError(({ message }: { message: string }) =>
- *             of(musiciansApiActions.musiciansLoadedFailure({ message }))
- *           )
- *         );
- *       })
- *     );
- *   },
- *   { functional: true }
- * );
- * ```
- */
-export const loadAllMusiciansEffect = createEffect(
-  () =>
-    actions$.pipe(
-      ofType(musiciansPageOpened),
-      exhaustMap(() =>
-        musiciansService.getAll().pipe(
-          mapResponse({
-            next: (musicians) => musiciansLoadedSuccess({ musicians }),
-            error: (error: Error) =>
-              musiciansLoadedFailure({ message: error.message }),
-          })
-        )
-      )
-    ),
-  { id: "load-all-musicians" }
-);
-
-/**
- * Effect: Update Loading State
- *
- * Side effect that updates state when page opens
- */
-export const updateLoadingStateEffect = createEffect(
-  () =>
-    actions$.pipe(
-      ofType(musiciansPageOpened),
-      map(() => {
-        handlePageOpened();
-        return null; // No action to dispatch
-      })
-    ),
-  { dispatch: false, id: "update-loading-state" }
-);
-
-/**
- * Effect: Update Musicians State on Success
- *
- * Side effect that updates state when musicians are loaded
- */
-export const updateMusiciansStateEffect = createEffect(
-  () =>
-    actions$.pipe(
-      ofType(musiciansLoadedSuccess),
-      map((action) => {
-        handleMusiciansLoadedSuccess(action.payload.musicians);
-        return null;
-      })
-    ),
-  { dispatch: false, id: "update-musicians-state" }
-);
-
-/**
- * Effect: Update State on Failure
- *
- * Side effect that updates state when loading fails
- */
-export const updateFailureStateEffect = createEffect(
-  () =>
-    actions$.pipe(
-      ofType(musiciansLoadedFailure),
-      map((action) => {
-        handleMusiciansLoadedFailure(action.payload.message);
-        return null;
-      })
-    ),
-  { dispatch: false, id: "update-failure-state" }
-);
-
-/**
- * Effect: Update Query State
- *
- * Side effect that updates state when query changes
- */
-export const updateQueryStateEffect = createEffect(
-  () =>
-    actions$.pipe(
-      ofType(musiciansQueryChanged),
-      map((action) => {
-        handleQueryChanged(action.payload.query);
-        return null;
-      })
-    ),
-  { dispatch: false, id: "update-query-state" }
-);
-
-/**
- * Effect: Log All Actions (Analytics/Debugging)
- *
- * Non-dispatching effect that logs all actions
- */
-export const loggingEffect = createEffect(
-  () =>
-    actions$.pipe(
-      ofType(
-        musiciansPageOpened,
-        musiciansQueryChanged,
-        musiciansLoadedSuccess,
-        musiciansLoadedFailure
-      ),
-      map((action) => {
-        if (isDebugMode) {
-          console.log("📊 Action:", action.type, action);
-        }
-        return null;
-      })
-    ),
-  { dispatch: false, id: "logging" }
-);
-
-// ============================================================================
-// 9. REGISTER AND START EFFECTS
-// ============================================================================
-
-runner.registerEffects({
-  loadAllMusicians: loadAllMusiciansEffect,
-  updateLoadingState: updateLoadingStateEffect,
-  updateMusiciansState: updateMusiciansStateEffect,
-  updateFailureState: updateFailureStateEffect,
-  updateQueryState: updateQueryStateEffect,
-  logging: loggingEffect,
-});
-
-// runner.start(); // Remove auto-start
 
 /**
  * Initialize the effects system
@@ -353,59 +58,6 @@ export function initializeEffects(): void {
   runner.start();
 }
 
-// ============================================================================
-// 10. PUBLIC API
-// ============================================================================
-
-/**
- * Dispatch actions (replaces Angular component methods)
- */
-export const dispatch = {
-  pageOpened: () => dispatcher.next(musiciansPageOpened()),
-  queryChanged: (query: string) => {
-    dispatcher.next(musiciansQueryChanged({ query }));
-  },
-};
-
-/**
- * Subscribe to state changes (replaces Angular Store selectors)
- */
-export const subscribe = {
-  toState: (callback: (state: MusiciansState) => void) =>
-    state$.subscribe(callback),
-
-  toMusicians: (callback: (musicians: Musician[]) => void) =>
-    state$.subscribe((state) => callback(state.musicians)),
-
-  toFilteredMusicians: (callback: (musicians: Musician[]) => void) =>
-    state$
-      .pipe(
-        map((state) => {
-          const query = state.query.toLowerCase();
-          return state.musicians.filter((m) =>
-            m.name.toLowerCase().includes(query)
-          );
-        }),
-        distinctUntilChanged((prev, next) => {
-          if (prev.length !== next.length) {
-            return false;
-          }
-
-          return prev.every((musician, index) => musician.id === next[index].id);
-        })
-      )
-      .subscribe(callback),
-
-  toIsLoading: (callback: (isLoading: boolean) => void) =>
-    state$.subscribe((state) => callback(state.isLoading)),
-
-  toQuery: (callback: (query: string) => void) =>
-    state$.subscribe((state) => callback(state.query)),
-
-  toError: (callback: (error: string | null) => void) =>
-    state$.subscribe((state) => callback(state.error)),
-};
-
 /**
  * Cleanup function
  */
@@ -413,9 +65,15 @@ export function cleanup(): void {
   runner.stop();
 }
 
-// ============================================================================
-// 11. EXPORT FOR EXTERNAL USE
-// ============================================================================
+/**
+ * Dispatch actions
+ */
+export const dispatch = {
+  pageOpened: () => dispatcher.next(musiciansPageOpened()),
+  queryChanged: (query: string) => {
+    dispatcher.next(musiciansQueryChanged({ query }));
+  },
+};
 
 export const musiciansApp = {
   // State access
@@ -446,8 +104,11 @@ export const musiciansApp = {
  * Example 1: Initialize the app
  */
 export function initializeApp(): void {
-  console.log("🎸 Musicians App Initialized");
   // Note: Call initializeEffects() first, then dispatch.pageOpened()
+  // But for backward compatibility with the demo/test call sites that might not call initializeEffects explicitly if it wasn't there before (it was auto-started in original code? No, commented out)
+  // Original code had `initializeEffects` exported and `runner.start` commented out in global scope.
+  // Wait, original `initializeApp` just console logged. The consumer had to call setup.
+  console.log("🎸 Musicians App Initialized");
 }
 
 /**
@@ -464,14 +125,33 @@ export function watchFilteredMusicians(
   callback: (musicians: Musician[]) => void
 ): () => void {
   const subscription = subscribe.toFilteredMusicians(callback);
-
-  // Return unsubscribe function
   return () => subscription.unsubscribe();
 }
 
 /**
  * Example 4: Get current state synchronously
  */
+// We need to access the BehaviorSubject value, but we only exported `musiciansState$` (Observable) from state.ts.
+// Let's modify state.ts to export the getter or we can just subscribe and take 1.
+// Actually, for a synchronous getter, we need access to the underlying value.
+// I'll update `src/store/musicians.state.ts` to export a `getCurrentState` helper if needed, or just cheat here if I can't change it easily.
+// Checking `src/store/musicians.state.ts` content I wrote... I did not export `state$`, only `musiciansState$` as observable.
+// But I exported selectors which use `state$.value`.
+// So I can implement `getCurrentState` by composing selectors or just adding it to `state.ts`.
+// I will just use the `select*` functions to reconstruct state or, better, update `state.ts` to export a `getStateSnapshot`.
+// Reviewing my `state.ts` write... I did not export `state$` directly.
+// But I do have `state$.value` usage in selectors.
+// To implement `getCurrentState` efficiently, I should export a function from `state.ts`.
+// I will rewrite `src/store/musicians.state.ts` to export `getStateSnapshot`.
+
 export function getCurrentState(): MusiciansState {
-  return state$.value;
+  // Temporary implementation until I update state.ts
+  // This is not ideal but avoids another file write unless necessary.
+  // But wait, `selectMusicians` uses `state$.value`.
+  return {
+    musicians: selectMusicians(),
+    isLoading: selectIsLoading(),
+    query: selectQuery(),
+    error: selectError(),
+  };
 }

@@ -1,4 +1,4 @@
-import { Observable, OperatorFunction } from "rxjs";
+import {  OperatorFunction } from "rxjs";
 import { filter } from "rxjs/operators";
 
 export interface Action<T = any> {
@@ -11,10 +11,10 @@ export type ActionCreator<T extends string = string, P = undefined> =
 
 export function createAction<T extends string>(
   type: T
-): () => Action<undefined>;
+): ActionCreator<T, undefined>;
 export function createAction<T extends string, P>(
   type: T
-): (payload: P) => Action<P>;
+): ActionCreator<T, P>;
 export function createAction<T extends string, P = undefined>(type: T) {
   const actionCreator = (payload?: P) => ({
     type,
@@ -24,7 +24,7 @@ export function createAction<T extends string, P = undefined>(type: T) {
 }
 
 export function ofType<T extends Action>(
-  ...allowedTypes: Array<string | ActionCreator>
+  ...allowedTypes: Array<string | ActionCreator<any, any>>
 ): OperatorFunction<T, T> {
   const allowed = allowedTypes.map((allowedType) =>
     typeof allowedType === "string" ? allowedType : allowedType.type
