@@ -5,6 +5,7 @@ import '../styles/MusiciansList.css';
 interface MusiciansListProps {
   musicians: Musician[];
   isLoading: boolean;
+  error: string | null;
   selectedMusicianId: string | null;
   onSelectMusician: (musicianId: string) => void;
 }
@@ -12,12 +13,21 @@ interface MusiciansListProps {
 const MusiciansList: React.FC<MusiciansListProps> = ({
   musicians,
   isLoading,
+  error,
   selectedMusicianId,
   onSelectMusician,
 }) => {
+  if (error) {
+    return (
+      <div className="empty-state" role="alert">
+        <p>{error}</p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="loading-container">
+      <div className="loading-container" role="status" aria-live="polite">
         <div className="loading-spinner"></div>
         <p>Loading musicians...</p>
       </div>

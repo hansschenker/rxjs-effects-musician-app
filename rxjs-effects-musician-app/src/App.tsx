@@ -5,8 +5,10 @@ import './App.css';
 
 function App() {
   const [musicians, setMusicians] = useState<Musician[]>([]);
+  const [filteredMusicians, setFilteredMusicians] = useState<Musician[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [query, setQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [selectedMusicianId, setSelectedMusicianId] = useState<string | null>(
     null
   );
@@ -20,12 +22,11 @@ function App() {
 
     // Subscribe to state changes
     const subscriptions = [
-      musiciansApp.subscribe.toFilteredMusicians(setMusicians),
+      musiciansApp.subscribe.toMusicians(setMusicians),
+      musiciansApp.subscribe.toFilteredMusicians(setFilteredMusicians),
       musiciansApp.subscribe.toIsLoading(setIsLoading),
-      musiciansApp.subscribe.toQuery((newQuery) => {
-        console.log('Query state updated to:', newQuery);
-        setQuery(newQuery);
-      }),
+      musiciansApp.subscribe.toQuery(setQuery),
+      musiciansApp.subscribe.toError(setError),
     ];
 
     // Cleanup subscriptions on unmount
@@ -51,17 +52,21 @@ function App() {
   }, [musicians, selectedMusicianId]);
 
   const handleQueryChange = (newQuery: string) => {
-    console.log('Query change:', newQuery);
     musiciansApp.dispatch.queryChanged(newQuery);
   };
+
+  const selectedMusician =
+    musicians.find((musician) => musician.id === selectedMusicianId) ?? null;
 
   return (
     <div className="App">
       <MusiciansPage
-        musicians={musicians}
+        musicians={filteredMusicians}
         isLoading={isLoading}
+        error={error}
         query={query}
         onQueryChange={handleQueryChange}
+        selectedMusician={selectedMusician}
         selectedMusicianId={selectedMusicianId}
         onSelectMusician={setSelectedMusicianId}
       />

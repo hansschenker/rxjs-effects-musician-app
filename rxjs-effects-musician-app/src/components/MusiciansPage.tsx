@@ -7,8 +7,10 @@ import SearchBar from './SearchBar';
 interface MusiciansPageProps {
   musicians: Musician[];
   isLoading: boolean;
+  error: string | null;
   query: string;
   onQueryChange: (query: string) => void;
+  selectedMusician: Musician | null;
   selectedMusicianId: string | null;
   onSelectMusician: (musicianId: string) => void;
 }
@@ -16,15 +18,13 @@ interface MusiciansPageProps {
 const MusiciansPage: React.FC<MusiciansPageProps> = ({
   musicians,
   isLoading,
+  error,
   query,
   onQueryChange,
+  selectedMusician,
   selectedMusicianId,
   onSelectMusician,
 }) => {
-  const selectedMusician = musicians.find(
-    (musician) => musician.id === selectedMusicianId
-  );
-
   return (
     <div className="musicians-page">
       <header className="page-header">
@@ -38,6 +38,7 @@ const MusiciansPage: React.FC<MusiciansPageProps> = ({
         <MusiciansList
           musicians={musicians}
           isLoading={isLoading}
+          error={error}
           selectedMusicianId={selectedMusicianId}
           onSelectMusician={onSelectMusician}
         />
