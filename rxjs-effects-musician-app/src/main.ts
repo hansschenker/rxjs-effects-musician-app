@@ -1,4 +1,11 @@
-import { BehaviorSubject, debounceTime, distinctUntilChanged, fromEvent, map } from "rxjs";
+import {
+  BehaviorSubject,
+  combineLatest,
+  debounceTime,
+  distinctUntilChanged,
+  fromEvent,
+  map,
+} from "rxjs";
 import { musiciansApp, Musician } from "./musicians-app";
 import "./index.css";
 import "./App.css";
@@ -173,41 +180,35 @@ const renderSelection = (musician: Musician | null) => {
   selectionContainer.append(card);
 };
 
-const updateSelection = (musicians: Musician[]) => {
-  const current = selectedMusicianId$.value;
+const resolveSelection = (
+  musicians: Musician[],
+  current: number | null
+): number | null => {
   if (musicians.length === 0) {
-    selectedMusicianId$.next(null);
-    return;
+    return null;
   }
 
-  const stillAvailable = musicians.some((musician) => musician.id === current);
-  if (!stillAvailable) {
-    selectedMusicianId$.next(musicians[0].id);
+  if (current !== null && musicians.some((musician) => musician.id === current)) {
+    return current;
   }
+
+  return musicians[0].id;
 };
 
-const stateSubscription = musiciansApp.state$.subscribe((state) => {
+const stateSubscription = combineLatest([
+  musiciansApp.state$,
+  selectedMusicianId$.pipe(distinctUntilChanged()),
+]).subscribe(([state, selectedId]) => {
   if (searchInput.value !== state.query) {
     searchInput.value = state.query;
   }
 
-  updateSelection(state.musicians);
+  const nextSelectedId = resolveSelection(state.musicians, selectedId);
+  if (nextSelectedId !== selectedId) {
+    selectedMusicianId$.next(nextSelectedId);
+    return;
+  }
 
-  const query = state.query.toLowerCase();
-  const filteredMusicians = state.musicians.filter((musician) =>
-    musician.name.toLowerCase().includes(query)
-  );
-
-  renderList(filteredMusicians, selectedMusicianId$.value, state.isLoading, state.error);
-
-  const selected = state.musicians.find(
-    (musician) => musician.id === selectedMusicianId$.value
-  );
-  renderSelection(selected ?? null);
-});
-
-const selectedSubscription = selectedMusicianId$.subscribe((selectedId) => {
-  const state = musiciansApp.getCurrentState();
   const query = state.query.toLowerCase();
   const filteredMusicians = state.musicians.filter((musician) =>
     musician.name.toLowerCase().includes(query)
@@ -231,7 +232,6 @@ fromEvent(searchInput, "input")
 
 window.addEventListener("beforeunload", () => {
   stateSubscription.unsubscribe();
-  selectedSubscription.unsubscribe();
   musiciansApp.cleanup();
 });
 
