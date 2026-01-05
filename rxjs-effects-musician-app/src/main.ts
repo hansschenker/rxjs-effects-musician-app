@@ -64,6 +64,20 @@ root.append(app);
 
 const selectedMusicianId$ = new BehaviorSubject<number | null>(null);
 
+const createFallbackImage = (name: string) => {
+  const safeName = name.trim() || "Unknown Musician";
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" role="img" aria-label="${safeName}">
+      <rect width="100%" height="100%" fill="#1f2937" />
+      <text x="50%" y="50%" fill="#f9fafb" font-size="20" font-family="Arial, sans-serif" text-anchor="middle" dominant-baseline="middle">
+        ${safeName}
+      </text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
 const renderList = (
   musicians: Musician[],
   selectedMusicianId: number | null,
@@ -158,9 +172,11 @@ const renderSelection = (musician: Musician | null) => {
   const image = document.createElement("img");
   image.src = musician.photoUrl;
   image.alt = musician.name;
-  image.addEventListener("error", () => {
-    image.src = `https://via.placeholder.com/300x200?text=${encodeURIComponent(musician.name)}`;
-  });
+  const handleImageError = () => {
+    image.removeEventListener("error", handleImageError);
+    image.src = createFallbackImage(musician.name);
+  };
+  image.addEventListener("error", handleImageError);
 
   imageWrapper.append(image);
 
