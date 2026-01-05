@@ -7,6 +7,9 @@ function App() {
   const [musicians, setMusicians] = useState<Musician[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [query, setQuery] = useState('');
+  const [selectedMusicianId, setSelectedMusicianId] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     // Initialize the effects system
@@ -32,6 +35,21 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (musicians.length === 0) {
+      setSelectedMusicianId(null);
+      return;
+    }
+
+    const hasSelection = musicians.some(
+      (musician) => musician.id === selectedMusicianId
+    );
+
+    if (!hasSelection) {
+      setSelectedMusicianId(musicians[0].id);
+    }
+  }, [musicians, selectedMusicianId]);
+
   const handleQueryChange = (newQuery: string) => {
     console.log('Query change:', newQuery);
     musiciansApp.dispatch.queryChanged(newQuery);
@@ -44,6 +62,8 @@ function App() {
         isLoading={isLoading}
         query={query}
         onQueryChange={handleQueryChange}
+        selectedMusicianId={selectedMusicianId}
+        onSelectMusician={setSelectedMusicianId}
       />
     </div>
   );

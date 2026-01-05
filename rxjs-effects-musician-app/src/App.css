@@ -22,3 +22,26 @@
   color: #888;
   font-size: 1.1rem;
 }
+
+.musicians-content {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
+  gap: 2rem;
+  align-items: start;
+  margin-top: 2rem;
+}
+
+.musician-selection {
+  display: flex;
+  justify-content: center;
+}
+
+.musician-selection .empty-state {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .musicians-content {
+    grid-template-columns: 1fr;
+  }
+}
